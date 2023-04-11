@@ -41,18 +41,34 @@ use cli_clipboard;
 use std::fs;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::{error::Error, io, fmt::format, rc::Rc};
+use std::{error::Error, io, rc::Rc};
 
-use magic_crypt::{new_magic_crypt, MagicCryptTrait, MagicCrypt256};
+use magic_crypt::{new_magic_crypt, MagicCrypt256, MagicCryptTrait};
 use models::*;
 
 fn main() {
-    flow();
+    let mc: Rc<MagicCrypt256> = Rc::new(new_magic_crypt!("magickey", 256));
+
+    let data = fs::read_to_string("./data/datas.json").expect("Unable to read file");
+    let json: EncryptedJSONData = serde_json::from_str(&data).expect("JSON does not have correct format.");
+    let decrypted_string = mc.decrypt_base64_to_string(json.encrypted_data).expect("decrypt");
+    let decrypted_json_data: DecryptedJSONData = serde_json::from_str(&decrypted_string).expect("JSON does not have correct format.");
+
+    println!("{:?}", decrypted_json_data.encrypted_data.passwords[0].title);
+    
+
+    let decrypted_string = serde_json::to_string(&decrypted_json_data).map_err(|err| format!("{err:?}")).expect("tostring");
+    let enccrypted_string = mc.encrypt_str_to_base64(decrypted_string);
+    let encrypted_data = EncryptedJSONData {
+        encrypted_data: enccrypted_string
+    };
+    let encrypted_json = serde_json::to_string(&encrypted_data).map_err(|err| format!("{err:?}")).expect("tostring");
+    fs::write("./data/datas.json", &encrypted_json).map_err(|err| format!("{err:?}")).expect("write");
+    // flow(mc.clone());
 }
 
-fn flow() {
-    let app_state = run_app();
-
+fn flow(mc: Rc<MagicCrypt256>) {
+    let app_state = run_app(mc.clone());
     match app_state {
         Ok(_) => {
             println!("Shutting down");
@@ -62,35 +78,14 @@ fn flow() {
             println!("Press Enter to continue!");
             let mut input = String::new();
             io::stdin().read_line(&mut input).expect("Invalid input");
-            flow();
+            flow(mc);
         }
     }
 }
-    // let mc: MagicCrypt256 = new_magic_crypt!("magickey", 256);
-    // let passwords: Vec<Password> = vec![Password::new("facebook".to_owned(), "asdqwe123".to_owned(), mc.clone())];
-    
-    // let mut input = get_user_input(UserInputType::EnterTitle)?;
 
-    // let selected_pass = passwords.iter().find(|password| password.title == input.trim()).or_else(|| {
-    //     io::stdin().read_line(&mut input).expect("Invalid input");
-    //     None
-    // }).ok_or(format!("password not found"))?;
+fn run_app(mc: Rc<MagicCrypt256>) -> Result<(), Box<dyn Error>> {
 
-    // let decrypted = mc.decrypt_base64_to_string(selected_pass.password.clone()).expect("decryption failed");
-    // copy(&decrypted);
-
-    // Ok(())
-
-fn run_app() -> Result<(), Box<dyn Error>> {
-    // let contents: JSONData = JSONData { 
-    //     master_password: "asd".to_owned(),
-    //     passwords: vec![]
-    // };
-    // let contents = serde_json::to_string(&contents)?;
-
-    // fs::write("./data/datas.json", contents)?;
-
-    let mut page = CurrentPage::new();
+    let mut page = CurrentPage::new(mc);
 
     page.display_page();
     

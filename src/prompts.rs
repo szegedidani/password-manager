@@ -1,6 +1,5 @@
 use std::{io, fs};
-
-use magic_crypt::{new_magic_crypt, MagicCrypt256, MagicCryptTrait};
+use magic_crypt::MagicCryptTrait;
 
 use crate::{models::*, navigation::*, copy};
 
@@ -76,8 +75,6 @@ pub fn get_password_prompt(page: &mut CurrentPage) -> Result<(), String> {
     let mut title = String::new();
     io::stdin().read_line(&mut title).expect("Invalid input");
 
-    let mc: MagicCrypt256 = new_magic_crypt!("magickey", 256);
-
     let data = fs::read_to_string("./data/datas.json")
         .expect("Unable to read file");
     let json: JSONData = serde_json::from_str(&data)
@@ -88,7 +85,7 @@ pub fn get_password_prompt(page: &mut CurrentPage) -> Result<(), String> {
         None
     }).ok_or(format!("password not found"))?;
 
-    let decrypted = mc.decrypt_base64_to_string(selected_pass.password.clone()).expect("decryption failed");
+    let decrypted = page.mc.decrypt_base64_to_string(selected_pass.password.clone()).expect("decryption failed");
     copy(&decrypted);
 
     get_page_prompt(page)
@@ -104,8 +101,7 @@ pub fn add_password_prompt(page: &mut CurrentPage) -> Result<(), String> {
     println!("Enter password");
     io::stdin().read_line(&mut password).expect("Invalid input");
 
-    let mc: MagicCrypt256 = new_magic_crypt!("magickey", 256);
-    let record = Password::new(title.trim().to_owned(), password.trim().to_owned(), mc);
+    let record = Password::new(title.trim().to_owned(), password.trim().to_owned(), page.mc.clone());
 
     let data = fs::read_to_string("./data/datas.json")
         .expect("Unable to read file");

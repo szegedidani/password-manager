@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 use magic_crypt::{MagicCrypt256, MagicCryptTrait};
@@ -17,7 +19,7 @@ pub struct Password {
 }
 
 impl Password {
-    pub fn new(title: String, password: String, mc: MagicCrypt256) -> Self {
+    pub fn new(title: String, password: String, mc: Rc<MagicCrypt256>) -> Self {
         let password = mc.encrypt_str_to_base64(password);
         Self { title, password }
     }
@@ -29,9 +31,18 @@ enum UserInputType {
 }
 
 pub struct CurrentPage {
-    page: Page
+    pub page: Page,
+    pub mc: Rc<MagicCrypt256>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct EncryptedJSONData {
+    pub encrypted_data: String,
+}
+#[derive(Serialize, Deserialize)]
+pub struct DecryptedJSONData {
+    pub encrypted_data: JSONData,
+}
 #[derive(Serialize, Deserialize)]
 pub struct JSONData {
     pub master_password: String,
@@ -39,8 +50,8 @@ pub struct JSONData {
 }
 
 impl CurrentPage {
-    pub fn new() -> Self {
-        let page = CurrentPage { page: Page::Login };
+    pub fn new(mc: Rc<MagicCrypt256>) -> Self {
+        let page = CurrentPage { page: Page::Login, mc };
         page
     }
 
