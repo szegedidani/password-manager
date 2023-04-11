@@ -21,13 +21,24 @@ pub fn dashboard_prompt(page: &mut CurrentPage) -> Result<(), String> {
 
 pub fn list_page_prompt(page: &mut CurrentPage) -> Result<(), String> {
     println!("Select action");
-    println!("1 - Back to Dashboard, 2 - Exit");
+    println!("1 - List entries, 2 - Back to Dashboard, 3 - Exit");
     let mut input = String::new();
     io::stdin().read_line(&mut input).expect("Invalid input");
         
     return match input.trim() {
-        "1" => go_to_dashboard(page),
-        "2" => Ok(()),
+        "1" => {
+            let data = fs::read_to_string("./data/datas.json")
+                .expect("Unable to read file");
+            let json: JSONData = serde_json::from_str(&data)
+                .expect("JSON does not have correct format.");
+
+            for password in json.passwords {
+                println!("{}", password.title);
+            }
+            list_page_prompt(page)
+        },
+        "2" => go_to_dashboard(page),
+        "3" => Ok(()),
         _ => return Err("Selected page doesn't exist".to_owned()),
     }
 }
